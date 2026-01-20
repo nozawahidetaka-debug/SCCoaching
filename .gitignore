@@ -1,0 +1,11 @@
+# Node modules
+node_modules/
+# Vite / build 出力
+dist/
+.vite/
+# OS / エディタ固有
+.DS_Store
+Thumbs.db
+*.log
+# 環境変数ファイル
+.env
