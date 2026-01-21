@@ -144,6 +144,25 @@ export const SessionManager: React.FC = () => {
         }
     };
 
+    // 音声認識の自動復帰監視 (Watchdog)
+    React.useEffect(() => {
+        if (!hasStarted) return;
+        if (isProcessing) return; // 処理中・発話中は再開しない
+
+        // 本来マイクがONであるべき状態なのにOFFになっている場合
+        if (!isListening) {
+            // 少し待ってから再開（エラー直後の連打防止）
+            const timer = setTimeout(() => {
+                // コンポーネントがアンマウントされていたり、状態が変わっていたら何もしない
+                if (!isProcessingRef.current && hasStarted) {
+                    console.log('[Session] Microphone stopped unexpectedly, restarting...');
+                    startListening();
+                }
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [hasStarted, isProcessing, isListening, startListening]);
+
     if (!hasStarted) {
         return (
             <div style={{
