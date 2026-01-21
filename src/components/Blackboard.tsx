@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useSessionStore } from '../store/sessionStore';
 
 const NODE_HEIGHT = 80;
-const GAP_Y = 60;
+const GAP_Y = 100;
 
 export const Blackboard: React.FC = () => {
     const { history, phase, insights } = useSessionStore();
@@ -32,26 +32,29 @@ export const Blackboard: React.FC = () => {
 
     // viewBox を最新のノードが中央付近に来るように計算
     const viewBox = useMemo(() => {
+        const viewWidth = 800;
+        const viewHeight = 600;
+
         if (phase === 'reflection' || phase === 'summary') {
             // 全体表示モード（すべてのinsightsを表示）
-            return "-600 -200 1200 1600";
+            return `-400 -200 ${viewWidth} 1600`;
         }
 
         if (phase === 'intro') {
-            return "-600 -400 1200 800";
+            return `-400 -300 ${viewWidth} ${viewHeight}`;
         }
 
-        // 最新のノードを中央に持ってくる
+        // 最新のノードを画面中央に持ってくる
         const lastIndex = currentNodes.length - 1;
         if (lastIndex < 0) {
-            return "-600 -400 1200 800";
+            return `-400 -300 ${viewWidth} ${viewHeight}`;
         }
 
         const lastY = currentNodes[lastIndex].y;
-        // 画面中央付近に最新ノードが来くるように調整 (800 / 2 = 400 だが、少し上寄りのほうが自然)
-        const viewY = lastY - 350;
+        // 最新ノードが画面の上下中央に来るように: lastY - (viewHeight / 2)
+        const viewY = lastY - (viewHeight / 2);
 
-        return `-600 ${viewY} 1200 800`;
+        return `-400 ${viewY} ${viewWidth} ${viewHeight}`;
     }, [phase, currentNodes]);
 
     return (
@@ -61,7 +64,7 @@ export const Blackboard: React.FC = () => {
                 style={{
                     width: '100%',
                     height: 'calc(100% - 200px)',
-                    transition: 'viewBox 0.5s ease-out'
+                    transition: 'viewBox 0.8s ease-out'
                 }}
                 preserveAspectRatio="xMidYMid meet"
             >
@@ -79,7 +82,7 @@ export const Blackboard: React.FC = () => {
                             y={node.y}
                             textAnchor="middle"
                             className="chalk-text"
-                            style={{ fontSize: '42px', fill: '#f5f5f5' }}
+                            style={{ fontSize: '48px', fill: '#f5f5f5' }}
                         >
                             {node.text}
                         </text>
@@ -87,9 +90,9 @@ export const Blackboard: React.FC = () => {
                         {i < currentNodes.length - 1 && (
                             <line
                                 x1={0}
-                                y1={node.y + 20}
+                                y1={node.y + 30}
                                 x2={0}
-                                y2={currentNodes[i + 1].y - 30}
+                                y2={currentNodes[i + 1].y - 40}
                                 stroke="var(--chalk-white)"
                                 strokeDasharray="5,5"
                                 strokeOpacity={0.5}
@@ -103,10 +106,10 @@ export const Blackboard: React.FC = () => {
                     <text
                         key={`insight-${i}`}
                         x={0}
-                        y={200 + i * 120}
+                        y={200 + i * 140}
                         textAnchor="middle"
                         className="chalk-text"
-                        style={{ fontSize: '36px', fill: '#ffeb3b', opacity: 0.9 }}
+                        style={{ fontSize: '40px', fill: '#ffeb3b', opacity: 0.9 }}
                     >
                         【気づき {i + 1}】{insight}
                     </text>
