@@ -88,16 +88,26 @@ export const useSpeechRecognition = () => {
                 }
 
                 if (finalResult) {
-                    finalTranscriptRef.current += finalResult;
+                    const diff = finalResult.trim();
+                    const current = finalTranscriptRef.current.trim();
 
-                    // 沈黙タイマーのリセット
-                    if (silenceTimerRef.current) {
-                        clearTimeout(silenceTimerRef.current);
+                    // 重複排除ロジック:
+                    // 1. 今回の確定テキストが空でない
+                    // 2. 現在の保持テキストの末尾が、今回のテキストで終わっていない（単純な重複送出の防止）
+                    if (diff && !current.endsWith(diff)) {
+                        finalTranscriptRef.current += finalResult;
+
+                        // 沈黙タイマーのリセット
+                        if (silenceTimerRef.current) {
+                            clearTimeout(silenceTimerRef.current);
+                        }
+                        silenceTimerRef.current = setTimeout(() => {
+                            console.log('Silence detected, stopping...');
+                            stopRecognition();
+                        }, 2000);
+                    } else {
+                        console.log('Duplicate transcript detected, ignoring:', finalResult);
                     }
-                    silenceTimerRef.current = setTimeout(() => {
-                        console.log('Silence detected, stopping...');
-                        stopRecognition();
-                    }, 2000);
                 }
 
                 if (interimTrans || finalResult) {
