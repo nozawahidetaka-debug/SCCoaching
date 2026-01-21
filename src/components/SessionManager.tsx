@@ -55,7 +55,7 @@ export const SessionManager: React.FC = () => {
                     await speak(firstQuestion, { delay: 1500 });
                 } else {
                     console.warn('[Session] Intro match failed for:', cleanText);
-                    await speak("すみません、よく聞き取れませんでした。「〇〇したいけれど、〇〇できない」の形式でもう一度教えてください。", { delay: 1200 });
+                    await speak("すみません、よく聞き取れませんでした。「まるまるしたいけれど、まるまるできない」の形式でもう一度教えてください。", { delay: 1200 });
                 }
             } else if (phase.startsWith('journey')) {
                 const journeyIndex = parseInt(phase.replace('journey', '')) - 1;
@@ -117,7 +117,7 @@ export const SessionManager: React.FC = () => {
         setHasStarted(true);
         if (phase === 'intro') {
             console.log('[Session] Triggering initial greeting.');
-            await speak("「〇〇したいけれど、〇〇できない」、の形式で教えてください", { delay: 500 });
+            await speak("「まるまるしたいけれど、まるまるできない」、の形式で教えてください", { delay: 500 });
             startListening();
         } else {
             // intro 以外のフェーズで再開した場合
