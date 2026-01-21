@@ -115,15 +115,20 @@ export const SessionManager: React.FC = () => {
     // セッション開始ハンドラ
     const handleStartSession = async () => {
         setHasStarted(true);
+        isProcessingRef.current = true;
+        setIsProcessing(true);
+
         if (phase === 'intro') {
             console.log('[Session] Triggering initial greeting.');
             await speak("「まるまるしたいけれど、まるまるできない」、の形式で教えてください", { delay: 500 });
-            startListening();
         } else {
             // intro 以外のフェーズで再開した場合
-            console.log('[Session] Resuming session, starting listening.');
-            startListening();
+            console.log('[Session] Resuming session.');
         }
+
+        isProcessingRef.current = false;
+        setIsProcessing(false);
+        startListening();
     };
 
     // 音声入力の監視
