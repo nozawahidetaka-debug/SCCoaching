@@ -21,6 +21,7 @@ export const SessionManager: React.FC = () => {
 
     // デバッグ用
     useEffect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).useSessionStore = useSessionStore;
     }, []);
 
@@ -122,6 +123,7 @@ export const SessionManager: React.FC = () => {
         };
         init();
         return () => cancel();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // 音声入力の監視

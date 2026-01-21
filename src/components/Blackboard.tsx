@@ -10,6 +10,7 @@ export const Blackboard: React.FC = () => {
     const { history, phase, insights } = useSessionStore();
 
     const allNodes = useMemo(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const nodes: any[] = [];
         const journeys = ['journey1', 'journey2', 'journey3', 'journey4'];
 

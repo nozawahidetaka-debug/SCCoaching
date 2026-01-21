@@ -8,11 +8,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 export const useSpeechRecognition = () => {
     const [transcript, setTranscript] = useState('');
     const [isListening, setIsListening] = useState(false);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognitionRef = useRef<any>(null);
     const finalTranscriptRef = useRef('');
-    const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
         if (!SpeechRecognition) {
             console.error('Speech recognition not supported in this browser.');
@@ -35,16 +37,14 @@ export const useSpeechRecognition = () => {
             }
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         recognition.onresult = (event: any) => {
-            let interimTranscript = '';
             let finalResult = '';
 
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 const result = event.results[i];
                 if (result.isFinal) {
                     finalResult += result[0].transcript;
-                } else {
-                    interimTranscript += result[0].transcript;
                 }
             }
 

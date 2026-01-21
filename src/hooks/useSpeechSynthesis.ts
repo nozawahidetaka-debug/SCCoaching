@@ -10,16 +10,17 @@ export const useSpeechSynthesis = () => {
 
     // 音声リストをプリロード
     useEffect(() => {
+        const synthesis = synthesisRef.current;
         const loadVoices = () => {
-            const voices = synthesisRef.current.getVoices();
+            const voices = synthesis.getVoices();
             if (voices.length > 0) {
                 voicesLoadedRef.current = true;
             }
         };
         loadVoices();
-        synthesisRef.current.addEventListener('voiceschanged', loadVoices);
+        synthesis.addEventListener('voiceschanged', loadVoices);
         return () => {
-            synthesisRef.current.removeEventListener('voiceschanged', loadVoices);
+            synthesis.removeEventListener('voiceschanged', loadVoices);
         };
     }, []);
 
