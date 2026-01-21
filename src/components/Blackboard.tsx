@@ -1,67 +1,69 @@
 import React, { useMemo } from 'react';
 import { useSessionStore } from '../store/sessionStore';
 
-const NODE_WIDTH = 250;
 const NODE_HEIGHT = 80;
-const GAP_X = 100;
-const GAP_Y = 120;
+const GAP_Y = 60;
 
 export const Blackboard: React.FC = () => {
     const { history, phase, insights } = useSessionStore();
 
-    const allNodes = useMemo(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const nodes: any[] = [];
-        const journeys = ['journey1', 'journey2', 'journey3', 'journey4'];
-
-        journeys.forEach((jKey, jIdx) => {
-            const journeyHistory = history[jKey] || [];
-            const offsetX = jIdx % 2 === 0 ? -400 : 400;
-            const offsetY = Math.floor(jIdx / 2) * 1500; // 各旅の間隔
-
-            journeyHistory.forEach((entry, i) => {
-                // 蛇行レイアウト (snake)
-                const row = Math.floor(i / 3);
-                const col = i % 3;
-                const x = offsetX + (row % 2 === 0 ? col : 2 - col) * (NODE_WIDTH + GAP_X);
-                const y = offsetY + row * (NODE_HEIGHT + GAP_Y);
-
-                nodes.push({
-                    id: `${jKey}-${i}`,
-                    text: entry.answer,
-                    x,
-                    y,
-                    isActive: phase === jKey || phase === `extract_${jKey}`,
-                    journeyIndex: jIdx
-                });
-            });
-        });
-
-        return nodes;
-    }, [history, phase]);
-
-    const viewBox = useMemo(() => {
-        if (phase === 'reflection' || phase === 'summary') {
-            return "-1000 -500 2000 4000"; // 全体表示
-        }
-        // 現在のアクティブな旅にフォーカス
-        let journeyIdx = 0;
+    // 現在アクティブな旅のキーを取得
+    const activeJourneyKey = useMemo(() => {
         if (phase.startsWith('journey')) {
-            journeyIdx = parseInt(phase.replace('journey', '')) - 1;
+            return phase;
         } else if (phase.startsWith('extract_journey')) {
-            journeyIdx = parseInt(phase.replace('extract_journey', '')) - 1;
+            return phase.replace('extract_', '');
         }
-        // ノード配置と同じ計算ロジックを使用
-        const offsetY = Math.floor(journeyIdx / 2) * 1500;
-        const centerY = offsetY + 500;
-        return `-800 ${centerY - 600} 1600 1200`;
+        return null;
     }, [phase]);
 
+    // 現在の旅のノードを取得（縦1列）
+    const currentNodes = useMemo(() => {
+        if (!activeJourneyKey) return [];
+
+        const journeyHistory = history[activeJourneyKey] || [];
+        return journeyHistory.map((entry, i) => ({
+            id: `${activeJourneyKey}-${i}`,
+            text: entry.answer,
+            y: i * (NODE_HEIGHT + GAP_Y),
+            index: i
+        }));
+    }, [history, activeJourneyKey]);
+
+    // viewBox を最新のノードが中央付近に来るように計算
+    const viewBox = useMemo(() => {
+        if (phase === 'reflection' || phase === 'summary') {
+            // 全体表示モード（すべてのinsightsを表示）
+            return "-600 -200 1200 1600";
+        }
+
+        if (phase === 'intro') {
+            return "-600 -400 1200 800";
+        }
+
+        // 最新のノードを中央に持ってくる
+        const lastIndex = currentNodes.length - 1;
+        if (lastIndex < 0) {
+            return "-600 -400 1200 800";
+        }
+
+        const lastY = currentNodes[lastIndex].y;
+        // 画面中央（やや上）に最新ノードが来るように
+        const centerY = lastY - 150;
+
+        return `-600 ${centerY} 1200 600`;
+    }, [phase, currentNodes]);
+
     return (
-        <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+        <div style={{ width: '100vw', height: '100vh', position: 'relative', paddingBottom: '200px' }}>
             <svg
                 viewBox={viewBox}
-                style={{ width: '100%', height: '100%', transition: 'viewBox 3s ease-in-out' }}
+                style={{
+                    width: '100%',
+                    height: 'calc(100% - 200px)',
+                    transition: 'viewBox 0.5s ease-out'
+                }}
+                preserveAspectRatio="xMidYMid meet"
             >
                 <defs>
                     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
@@ -69,50 +71,51 @@ export const Blackboard: React.FC = () => {
                     </marker>
                 </defs>
 
-                {allNodes.map((node, i) => (
-                    <g key={node.id} style={{ opacity: node.isActive ? 1 : 0.3, transition: 'opacity 1s' }}>
+                {/* 現在の旅のノード（縦1列） */}
+                {currentNodes.map((node, i) => (
+                    <g key={node.id} style={{ transition: 'opacity 0.5s' }}>
                         <text
-                            x={node.x + NODE_WIDTH / 2}
-                            y={node.y + NODE_HEIGHT / 2}
+                            x={0}
+                            y={node.y}
                             textAnchor="middle"
                             className="chalk-text"
-                            style={{ fontSize: '24px', fill: '#f5f5f5' }}
+                            style={{ fontSize: '42px', fill: '#f5f5f5' }}
                         >
                             {node.text}
                         </text>
-                        {/* 簡易的な矢印 (次のノードへの連結) */}
-                        {i < allNodes.length - 1 && allNodes[i + 1].journeyIndex === node.journeyIndex && (
+                        {/* 次のノードへの矢印 */}
+                        {i < currentNodes.length - 1 && (
                             <line
-                                x1={node.x + NODE_WIDTH / 2}
-                                y1={node.y + NODE_HEIGHT}
-                                x2={allNodes[i + 1].x + NODE_WIDTH / 2}
-                                y2={allNodes[i + 1].y}
+                                x1={0}
+                                y1={node.y + 20}
+                                x2={0}
+                                y2={currentNodes[i + 1].y - 30}
                                 stroke="var(--chalk-white)"
                                 strokeDasharray="5,5"
-                                markerEnd="url(#arrow)"
+                                strokeOpacity={0.5}
                             />
                         )}
                     </g>
                 ))}
 
-                {/* 気づきの表示 */}
-                {insights.map((insight, i) => (
+                {/* summary/reflection 時に気づきを表示 */}
+                {(phase === 'summary' || phase === 'reflection') && insights.map((insight, i) => (
                     <text
                         key={`insight-${i}`}
                         x={0}
-                        y={i * 1500 + 1300}
+                        y={200 + i * 120}
                         textAnchor="middle"
                         className="chalk-text"
-                        style={{ fontSize: '32px', fill: '#ffeb3b', opacity: 0.9 }}
+                        style={{ fontSize: '36px', fill: '#ffeb3b', opacity: 0.9 }}
                     >
-                        【気づき】{insight}
+                        【気づき {i + 1}】{insight}
                     </text>
                 ))}
             </svg>
 
             {phase === 'intro' && (
                 <div style={{
-                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)',
                     fontSize: '3rem', textAlign: 'center'
                 }} className="chalk-text fade-in">
                     The Deep Chalk
