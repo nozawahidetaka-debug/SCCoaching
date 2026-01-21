@@ -29,10 +29,8 @@ export const useSpeechRecognition = () => {
     }, []);
 
     const startListening = useCallback(() => {
-        if (isListening) {
-            console.log('Already listening, skipping start.');
-            return;
-        }
+        // 強制的に既存の認識を停止してリセット
+        stopRecognition();
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -41,81 +39,81 @@ export const useSpeechRecognition = () => {
             return;
         }
 
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'ja-JP';
+        // 短い遅延を入れて、前のインスタンスのクリーンアップ時間を確保
+        setTimeout(() => {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'ja-JP';
 
-        recognition.onstart = () => {
-            console.log('Recognition started');
-            setIsListening(true);
-            finalTranscriptRef.current = '';
-            setTranscript('');
-        };
+            recognition.onstart = () => {
+                console.log('Recognition started');
+                setIsListening(true);
+                finalTranscriptRef.current = '';
+                setTranscript('');
+            };
 
-        recognition.onend = () => {
-            console.log('Recognition ended');
-            setIsListening(false);
-            // 終了時に結果があればセット
-            if (finalTranscriptRef.current) {
-                console.log('Setting final transcript on end:', finalTranscriptRef.current);
-                setTranscript(finalTranscriptRef.current);
-            }
-            recognitionRef.current = null;
-        };
-
-        recognition.onerror = (event: any) => {
-            console.error('Recognition error:', event.error);
-            if (event.error === 'no-speech') {
-                // 無音の場合は無視して終了（必要なら再開ロジックを検討）
-            }
-            // エラー時も停止扱いにする
-            stopRecognition();
-        };
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        recognition.onresult = (event: any) => {
-            let interimTrans = '';
-            let finalResult = '';
-
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                const result = event.results[i];
-                if (result.isFinal) {
-                    finalResult += result[0].transcript;
-                } else {
-                    interimTrans += result[0].transcript;
+            recognition.onend = () => {
+                console.log('Recognition ended');
+                setIsListening(false);
+                // 終了時に結果があればセット
+                if (finalTranscriptRef.current) {
+                    console.log('Setting final transcript on end:', finalTranscriptRef.current);
+                    setTranscript(finalTranscriptRef.current);
                 }
-            }
+                recognitionRef.current = null;
+            };
 
-            if (finalResult) {
-                finalTranscriptRef.current += finalResult;
-
-                // 沈黙タイマーのリセット
-                if (silenceTimerRef.current) {
-                    clearTimeout(silenceTimerRef.current);
+            recognition.onerror = (event: any) => {
+                console.error('Recognition error:', event.error);
+                if (event.error === 'no-speech') {
+                    // 無音の場合は無視して終了
                 }
-                silenceTimerRef.current = setTimeout(() => {
-                    console.log('Silence detected, stopping...');
-                    stopRecognition();
-                }, 2000);
-            }
+                // エラー時も停止扱いにする
+                stopRecognition();
+            };
 
-            // 途中経過も表示したい場合はここで setTranscript するか検討
-            // 今回は最終確定時に SessionManager が反応するため、途中経過を表示用に入れるなら state を分けるか、
-            // SessionManager側で transcript をリアルタイム表示に使っているならここでも setTranscript する。
-            if (interimTrans || finalResult) {
-                setTranscript(finalTranscriptRef.current + interimTrans);
-            }
-        };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            recognition.onresult = (event: any) => {
+                let interimTrans = '';
+                let finalResult = '';
 
-        recognitionRef.current = recognition;
-        try {
-            recognition.start();
-        } catch (e) {
-            console.error('Failed to start recognition:', e);
-            setIsListening(false);
-        }
-    }, [isListening, stopRecognition]);
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    const result = event.results[i];
+                    if (result.isFinal) {
+                        finalResult += result[0].transcript;
+                    } else {
+                        interimTrans += result[0].transcript;
+                    }
+                }
+
+                if (finalResult) {
+                    finalTranscriptRef.current += finalResult;
+
+                    // 沈黙タイマーのリセット
+                    if (silenceTimerRef.current) {
+                        clearTimeout(silenceTimerRef.current);
+                    }
+                    silenceTimerRef.current = setTimeout(() => {
+                        console.log('Silence detected, stopping...');
+                        stopRecognition();
+                    }, 2000);
+                }
+
+                if (interimTrans || finalResult) {
+                    setTranscript(finalTranscriptRef.current + interimTrans);
+                }
+            };
+
+            recognitionRef.current = recognition;
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error('Failed to start recognition:', e);
+                setIsListening(false);
+            }
+        }, 100);
+    }, [stopRecognition]);
 
     // コンポーネントアンマウント時のクリーンアップ
     useEffect(() => {
