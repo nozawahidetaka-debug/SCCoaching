@@ -26,6 +26,7 @@ interface SessionState {
   addInsight: (insight: string) => void;
   incrementCycle: () => void;
   resetCycle: () => void;
+  resetSession: () => void;
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
@@ -51,4 +52,16 @@ export const useSessionStore = create<SessionState>((set) => ({
   addInsight: (insight) => set((state) => ({ insights: [...state.insights, insight] })),
   incrementCycle: () => set((state) => ({ currentCycle: state.currentCycle + 1 })),
   resetCycle: () => set({ currentCycle: 0 }),
+  resetSession: () => set({
+    phase: 'intro',
+    variables: { A: '', B: '' },
+    currentCycle: 0,
+    history: {
+      journey1: [],
+      journey2: [],
+      journey3: [],
+      journey4: [],
+    },
+    insights: [],
+  }),
 }));

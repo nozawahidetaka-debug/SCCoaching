@@ -12,7 +12,7 @@ const JOURNEY_MAP: { key: string; question: (val: string) => string }[] = [
 ];
 
 export const SessionManager: React.FC = () => {
-    const { phase, variables, currentCycle, setPhase, setVariables, addHistory, incrementCycle, resetCycle, addInsight } = useSessionStore();
+    const { phase, variables, currentCycle, setPhase, setVariables, addHistory, incrementCycle, resetCycle, addInsight, resetSession } = useSessionStore();
     const { transcript, isListening, startListening, stopListening, setTranscript } = useSpeechRecognition();
     const { speak, cancel } = useSpeechSynthesis();
 
@@ -26,6 +26,18 @@ export const SessionManager: React.FC = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [hasStarted, setHasStarted] = useState(false);
     const isProcessingRef = useRef(false);
+
+    // セッションを強制終了してリセットする
+    const handleEndSession = () => {
+        if (window.confirm('セッションを終了して最初に戻りますか？')) {
+            cancel();
+            stopListening();
+            resetSession();
+            setHasStarted(false);
+            setIsProcessing(false);
+            isProcessingRef.current = false;
+        }
+    };
 
     // デバッグ用
     React.useEffect(() => {
@@ -314,8 +326,37 @@ export const SessionManager: React.FC = () => {
                     padding: '8px 16px',
                     borderRadius: '8px',
                 }}>
-                    「{transcript}」
                 </div>
+            )}
+
+            {/* 終了ボタン */}
+            {hasStarted && (
+                <button
+                    onClick={handleEndSession}
+                    style={{
+                        position: 'absolute',
+                        bottom: '20px',
+                        right: '20px',
+                        padding: '8px 16px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        borderRadius: '20px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        transition: 'all 0.3s'
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                        e.currentTarget.style.color = '#fff';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)';
+                    }}
+                >
+                    セッションを終了
+                </button>
             )}
         </div>
     );
