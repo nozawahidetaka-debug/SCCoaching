@@ -56,7 +56,6 @@ export const SessionManager: React.FC = () => {
 
         try {
             if (phase === 'intro') {
-                // 変数抽出: より寛容なパターン
                 const introRegex = /(.+?)[した]い(?:けれども?|けど|だけど|なのに|のに)?[、,\s]*(.+?)(?:が|を)?(?:できない|出来ない|きない|出来ん)/;
                 const match = cleanText.match(introRegex);
                 if (match) {
@@ -73,7 +72,6 @@ export const SessionManager: React.FC = () => {
                 const journeyIndex = parseInt(phase.replace('journey', '')) - 1;
                 const journey = JOURNEY_MAP[journeyIndex];
 
-                // 履歴に追加
                 addHistory(journey.key, {
                     question: currentCycle === 0 ? journey.question(journeyIndex % 2 === 0 ? variables.A : variables.B) : "それだとどうなりますか？",
                     answer: cleanText,
@@ -85,14 +83,12 @@ export const SessionManager: React.FC = () => {
                     console.log(`[Session] Advancing cycle in ${phase}:`, currentCycle + 1);
                     await speak(`${cleanText}だと、どうなりますか？`, { delay: 1500 });
                 } else {
-                    // 旅の終了
                     console.log(`[Session] Finshing ${phase}, moving to extract.`);
                     await speak("はい、ここまでで、何か感じたこと、気がついたことはありますか？", { delay: 2000 });
                     resetCycle();
                     setPhase(`extract_${phase}` as Phase);
                 }
             } else if (phase.startsWith('extract_')) {
-                // 気づきの記録
                 addInsight(cleanText);
                 const currentJourneyNum = parseInt(phase.replace('extract_journey', ''));
                 console.log(`[Session] Insight recorded for journey ${currentJourneyNum}:`, cleanText);
@@ -100,7 +96,6 @@ export const SessionManager: React.FC = () => {
                 if (currentJourneyNum < 4) {
                     const nextJourneyNum = currentJourneyNum + 1;
                     setPhase(`journey${nextJourneyNum}` as Phase);
-                    // nextJourneyNum は 1-indexed なので、JOURNEY_MAP のインデックスは nextJourneyNum - 1
                     const nextJourney = JOURNEY_MAP[nextJourneyNum - 1];
                     const nextVar = (nextJourneyNum - 1) % 2 === 0 ? variables.A : variables.B;
                     console.log(`[Session] Moving to journey${nextJourneyNum}:`, nextJourney.question(nextVar));
@@ -124,18 +119,13 @@ export const SessionManager: React.FC = () => {
         }
     }, [phase, variables, currentCycle, setPhase, setVariables, addHistory, incrementCycle, resetCycle, addInsight, stopListening, startListening, speak, setTranscript]);
 
-    // セッション開始ハンドラ
     const handleStartSession = async () => {
         setHasStarted(true);
         isProcessingRef.current = true;
         setIsProcessing(true);
 
         if (phase === 'intro') {
-            console.log('[Session] Triggering initial greeting.');
             await speak("「まるまるしたいけれど、まるまるできない」、の形式で教えてください", { delay: 500 });
-        } else {
-            // intro 以外のフェーズで再開した場合
-            console.log('[Session] Resuming session.');
         }
 
         isProcessingRef.current = false;
@@ -143,47 +133,31 @@ export const SessionManager: React.FC = () => {
         startListening();
     };
 
-    // 音声入力の監視
     React.useEffect(() => {
         if (!hasStarted) return;
         if (transcript && !isListening && !isProcessingRef.current) {
-            console.log('[Session] Final transcript detected:', transcript);
             processResponse(transcript);
         }
     }, [transcript, isListening, processResponse, hasStarted]);
 
-    // 手動での聞き取り再開（クリック時）
     const handleManualRestart = () => {
         if (!hasStarted) return;
-
-        console.log('[Session] Manual restart triggered.');
-
-        // 処理中・考え中の場合でも強制的にリセットする（スタック回避のため）
         if (isProcessingRef.current || isProcessing) {
-            console.log('[Session] Force resetting stuck state.');
             isProcessingRef.current = false;
             setIsProcessing(false);
-            cancel(); // 読み上げ中なら止める
+            cancel();
         }
-
-        // 基本的に常にstartListeningを試みる
         if (!isListening) {
             startListening();
         }
     };
 
-    // 音声認識の自動復帰監視 (Watchdog)
     React.useEffect(() => {
         if (!hasStarted) return;
-        if (isProcessing) return; // 処理中・発話中は再開しない
-
-        // 本来マイクがONであるべき状態なのにOFFになっている場合
+        if (isProcessing) return;
         if (!isListening) {
-            // 少し待ってから再開（エラー直後の連打防止）
             const timer = setTimeout(() => {
-                // コンポーネントがアンマウントされていたり、状態が変わっていたら何もしない
                 if (!isProcessingRef.current && hasStarted) {
-                    console.log('[Session] Microphone stopped unexpectedly, restarting...');
                     startListening();
                 }
             }, 500);
@@ -234,130 +208,135 @@ export const SessionManager: React.FC = () => {
     }
 
     return (
-        <div
-            translate="no" // Google翻訳の干渉を防止
-            onClick={handleManualRestart}
-            style={{
-                position: 'fixed',
-                bottom: '40px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '12px',
-                zIndex: 1000,
-                cursor: 'pointer',
-            }}
-        >
-            {/* マイクアイコン */}
+        <>
             <div
+                translate="no"
+                onClick={handleManualRestart}
                 style={{
-                    width: '60px',
-                    height: '60px',
-                    borderRadius: '50%',
-                    backgroundColor: isListening ? 'rgba(255, 82, 82, 0.8)' : 'rgba(100, 100, 100, 0.6)',
+                    position: 'fixed',
+                    bottom: '40px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    animation: isListening ? 'pulse 1.5s ease-in-out infinite' : 'none',
-                    transition: 'background-color 0.3s ease',
-                    boxShadow: isListening ? '0 0 20px rgba(255, 82, 82, 0.6)' : 'none',
-                    position: 'relative',
+                    gap: '12px',
+                    zIndex: 1000,
+                    cursor: 'pointer',
                 }}
             >
-                <svg
-                    width="28"
-                    height="28"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#fff"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                >
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                    <line x1="12" y1="19" x2="12" y2="23" />
-                    <line x1="8" y1="23" x2="16" y2="23" />
-                </svg>
-
-                {(!isListening && !isProcessing) && (
-                    <div style={{
-                        position: 'absolute',
-                        top: '-5px',
-                        right: '-5px',
-                        width: '15px',
-                        height: '15px',
-                        backgroundColor: '#ffcc00',
+                <div
+                    style={{
+                        width: '60px',
+                        height: '60px',
                         borderRadius: '50%',
-                        border: '2px solid #333'
-                    }} />
-                )}
-            </div>
+                        backgroundColor: isListening ? 'rgba(255, 82, 82, 0.8)' : 'rgba(100, 100, 100, 0.6)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        animation: isListening ? 'pulse 1.5s ease-in-out infinite' : 'none',
+                        transition: 'background-color 0.3s ease',
+                        boxShadow: isListening ? '0 0 20px rgba(255, 82, 82, 0.6)' : 'none',
+                        position: 'relative',
+                    }}
+                >
+                    <svg
+                        width="28"
+                        height="28"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#fff"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                        <line x1="12" y1="19" x2="12" y2="23" />
+                        <line x1="8" y1="23" x2="16" y2="23" />
+                    </svg>
 
-            {/* ステータステキスト */}
-            <div className="chalk-text" style={{
-                fontSize: '1.2rem',
-                opacity: 0.9,
-                textAlign: 'center',
-                height: '2rem'
-            }}>
-                {isListening ? (
-                    <span>🎤 話してください...</span>
-                ) : isProcessing ? (
-                    <span>💭 考え中...</span>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <span>(マイクを待機中)</span>
-                        <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>クリックして再開</span>
+                    {!isListening && !isProcessing && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '-5px',
+                            right: '-5px',
+                            width: '15px',
+                            height: '15px',
+                            backgroundColor: '#ffcc00',
+                            borderRadius: '50%',
+                            border: '2px solid #333'
+                        }} />
+                    )}
+                </div>
+
+                <div className="chalk-text" style={{
+                    fontSize: '1.2rem',
+                    opacity: 0.9,
+                    textAlign: 'center',
+                    height: '2rem'
+                }}>
+                    {isListening ? (
+                        <span>🎤 話してください...</span>
+                    ) : isProcessing ? (
+                        <span>💭 考え中...</span>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span>(マイクを待機中)</span>
+                            <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>クリックして再開</span>
+                        </div>
+                    )}
+                </div>
+
+                {transcript && (
+                    <div className="chalk-text" style={{
+                        fontSize: '1rem',
+                        opacity: 0.7,
+                        maxWidth: '300px',
+                        textAlign: 'center',
+                        backgroundColor: 'rgba(0,0,0,0.3)',
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                    }}>
+                        「{transcript}」
                     </div>
                 )}
             </div>
 
-            {/* リアルタイム認識テキスト */}
-            {transcript && (
-                <div className="chalk-text" style={{
-                    fontSize: '1rem',
-                    opacity: 0.7,
-                    maxWidth: '300px',
-                    textAlign: 'center',
-                    backgroundColor: 'rgba(0,0,0,0.3)',
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                }}>
-                </div>
-            )}
-
-            {/* 終了ボタン */}
             {hasStarted && (
                 <button
-                    onClick={handleEndSession}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleEndSession();
+                    }}
                     style={{
-                        position: 'absolute',
-                        bottom: '20px',
-                        right: '20px',
-                        padding: '8px 16px',
+                        position: 'fixed',
+                        bottom: '40px',
+                        right: '40px',
+                        padding: '10px 20px',
                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
                         color: 'rgba(255, 255, 255, 0.6)',
                         border: '1px solid rgba(255, 255, 255, 0.2)',
-                        borderRadius: '20px',
+                        borderRadius: '25px',
                         cursor: 'pointer',
                         fontSize: '14px',
-                        transition: 'all 0.3s'
+                        transition: 'all 0.3s',
+                        zIndex: 2000,
                     }}
                     onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
                         e.currentTarget.style.color = '#fff';
+                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)';
                     }}
                     onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
                         e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)';
+                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
                     }}
                 >
                     セッションを終了
                 </button>
             )}
-        </div>
+        </>
     );
 };
