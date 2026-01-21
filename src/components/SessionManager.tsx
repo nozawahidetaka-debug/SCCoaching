@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useSessionStore } from '../store/sessionStore';
 import type { Phase } from '../store/sessionStore';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
@@ -16,11 +16,19 @@ export const SessionManager: React.FC = () => {
     const { transcript, isListening, startListening, stopListening, setTranscript } = useSpeechRecognition();
     const { speak, cancel } = useSpeechSynthesis();
 
-    const [isProcessing, setIsProcessing] = React.useState(false);
+    // アンマウント時に音声をキャンセル
+    React.useEffect(() => {
+        return () => {
+            cancel();
+        };
+    }, [cancel]);
+
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [hasStarted, setHasStarted] = useState(false);
     const isProcessingRef = useRef(false);
 
     // デバッグ用
-    useEffect(() => {
+    React.useEffect(() => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).useSessionStore = useSessionStore;
     }, []);
@@ -104,43 +112,79 @@ export const SessionManager: React.FC = () => {
         }
     }, [phase, variables, currentCycle, setPhase, setVariables, addHistory, incrementCycle, resetCycle, addInsight, stopListening, startListening, speak, setTranscript]);
 
-    // 初期化時の発話（コンポーネントマウント時に一度だけ）
-    const hasInitializedRef = useRef(false);
-    useEffect(() => {
-        if (hasInitializedRef.current) return;
-        hasInitializedRef.current = true;
-
-        const init = async () => {
-            if (phase === 'intro') {
-                console.log('[Session] Triggering initial greeting.');
-                await speak("「〇〇したいけれど、〇〇できない」、の形式で教えてください", { delay: 1000 });
-                startListening();
-            } else {
-                // intro 以外のフェーズで起動した場合は聞き取りを開始
-                console.log('[Session] Already past intro, starting listening.');
-                startListening();
-            }
-        };
-        init();
-        return () => cancel();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    // セッション開始ハンドラ
+    const handleStartSession = async () => {
+        setHasStarted(true);
+        if (phase === 'intro') {
+            console.log('[Session] Triggering initial greeting.');
+            await speak("「〇〇したいけれど、〇〇できない」、の形式で教えてください", { delay: 500 });
+            startListening();
+        } else {
+            // intro 以外のフェーズで再開した場合
+            console.log('[Session] Resuming session, starting listening.');
+            startListening();
+        }
+    };
 
     // 音声入力の監視
-    useEffect(() => {
+    React.useEffect(() => {
+        if (!hasStarted) return;
         if (transcript && !isListening && !isProcessingRef.current) {
             console.log('[Session] Final transcript detected:', transcript);
             processResponse(transcript);
         }
-    }, [transcript, isListening, processResponse]);
+    }, [transcript, isListening, processResponse, hasStarted]);
 
     // 手動での聞き取り再開
     const handleManualRestart = () => {
+        if (!hasStarted) return;
         if (!isListening && !isProcessingRef.current) {
             console.log('[Session] Manual restart triggered.');
             startListening();
         }
     };
+
+    if (!hasStarted) {
+        return (
+            <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                zIndex: 2000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'column',
+                gap: '20px'
+            }}>
+                <button
+                    onClick={handleStartSession}
+                    style={{
+                        padding: '15px 40px',
+                        fontSize: '1.5rem',
+                        backgroundColor: '#ffcc00',
+                        color: '#333',
+                        border: 'none',
+                        borderRadius: '50px',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 15px rgba(255, 204, 0, 0.4)',
+                        fontWeight: 'bold',
+                        transition: 'transform 0.2s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                    セッションを始める
+                </button>
+                <p style={{ color: '#fff', fontSize: '1.1rem' }}>
+                    音声を使用します。ボリュームを調整してください。
+                </p>
+            </div>
+        );
+    }
 
     return (
         <div
