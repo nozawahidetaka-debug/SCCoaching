@@ -56,10 +56,10 @@ export const useSpeechSynthesis = () => {
 
                 synthesisRef.current.speak(utterance);
 
-                // 安全策: 30秒後にタイムアウト
+                // 安全策: 10秒後にタイムアウト（読み上げが終わらない場合の救済）
                 setTimeout(() => {
                     resolve();
-                }, 30000);
+                }, 10000);
             }, options?.delay ?? 0);
         });
     }, []);

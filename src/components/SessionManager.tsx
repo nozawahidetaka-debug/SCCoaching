@@ -135,11 +135,22 @@ export const SessionManager: React.FC = () => {
         }
     }, [transcript, isListening, processResponse, hasStarted]);
 
-    // 手動での聞き取り再開
+    // 手動での聞き取り再開（クリック時）
     const handleManualRestart = () => {
         if (!hasStarted) return;
-        if (!isListening && !isProcessingRef.current) {
-            console.log('[Session] Manual restart triggered.');
+
+        console.log('[Session] Manual restart triggered.');
+
+        // 処理中・考え中の場合でも強制的にリセットする（スタック回避のため）
+        if (isProcessingRef.current || isProcessing) {
+            console.log('[Session] Force resetting stuck state.');
+            isProcessingRef.current = false;
+            setIsProcessing(false);
+            cancel(); // 読み上げ中なら止める
+        }
+
+        // 基本的に常にstartListeningを試みる
+        if (!isListening) {
             startListening();
         }
     };
@@ -219,7 +230,7 @@ export const SessionManager: React.FC = () => {
                 alignItems: 'center',
                 gap: '12px',
                 zIndex: 1000,
-                cursor: (!isListening && !isProcessing) ? 'pointer' : 'default',
+                cursor: 'pointer',
             }}
         >
             {/* マイクアイコン */}
