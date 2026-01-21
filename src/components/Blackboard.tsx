@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useSessionStore } from '../store/sessionStore';
 
 const NODE_HEIGHT = 80;
-const GAP_Y = 100;
+const GAP_Y = 150;
 
 export const Blackboard: React.FC = () => {
     const { history, phase, insights } = useSessionStore();
@@ -32,39 +32,39 @@ export const Blackboard: React.FC = () => {
 
     // viewBox を最新のノードが中央付近に来るように計算
     const viewBox = useMemo(() => {
-        const viewWidth = 800;
-        const viewHeight = 600;
+        const viewWidth = 1000;
+        const viewHeight = 1000;
 
         if (phase === 'reflection' || phase === 'summary') {
             // 全体表示モード（すべてのinsightsを表示）
-            return `-400 -200 ${viewWidth} 1600`;
+            return `-500 -200 ${viewWidth} 2000`;
         }
 
         if (phase === 'intro') {
-            return `-400 -300 ${viewWidth} ${viewHeight}`;
+            return `-500 -500 ${viewWidth} ${viewHeight}`;
         }
 
         // 最新のノードを画面中央に持ってくる
         const lastIndex = currentNodes.length - 1;
         if (lastIndex < 0) {
-            return `-400 -300 ${viewWidth} ${viewHeight}`;
+            return `-500 -500 ${viewWidth} ${viewHeight}`;
         }
 
         const lastY = currentNodes[lastIndex].y;
-        // 最新ノードが画面の上下中央に来るように: lastY - (viewHeight / 2)
+        // 最新ノードが画面の上下真ん中に来るように: lastY - (viewHeight / 2)
         const viewY = lastY - (viewHeight / 2);
 
-        return `-400 ${viewY} ${viewWidth} ${viewHeight}`;
+        return `-500 ${viewY} ${viewWidth} ${viewHeight}`;
     }, [phase, currentNodes]);
 
     return (
-        <div style={{ width: '100vw', height: '100vh', position: 'relative', paddingBottom: '200px' }}>
+        <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
             <svg
                 viewBox={viewBox}
                 style={{
                     width: '100%',
-                    height: 'calc(100% - 200px)',
-                    transition: 'viewBox 0.8s ease-out'
+                    height: '100%',
+                    transition: 'viewBox 1s ease-in-out'
                 }}
                 preserveAspectRatio="xMidYMid meet"
             >
@@ -82,20 +82,21 @@ export const Blackboard: React.FC = () => {
                             y={node.y}
                             textAnchor="middle"
                             className="chalk-text"
-                            style={{ fontSize: '48px', fill: '#f5f5f5' }}
+                            style={{ fontSize: '56px', fill: '#f5f5f5' }}
                         >
                             {node.text}
                         </text>
-                        {/* 次のノードへの矢印 */}
+                        {/* 次のノードへの矢印（破線） */}
                         {i < currentNodes.length - 1 && (
                             <line
                                 x1={0}
-                                y1={node.y + 30}
+                                y1={node.y + 40}
                                 x2={0}
-                                y2={currentNodes[i + 1].y - 40}
+                                y2={currentNodes[i + 1].y - 60}
                                 stroke="var(--chalk-white)"
-                                strokeDasharray="5,5"
-                                strokeOpacity={0.5}
+                                strokeWidth="2"
+                                strokeDasharray="8,8"
+                                strokeOpacity={0.3}
                             />
                         )}
                     </g>
@@ -106,10 +107,10 @@ export const Blackboard: React.FC = () => {
                     <text
                         key={`insight-${i}`}
                         x={0}
-                        y={200 + i * 140}
+                        y={200 + i * 160}
                         textAnchor="middle"
                         className="chalk-text"
-                        style={{ fontSize: '40px', fill: '#ffeb3b', opacity: 0.9 }}
+                        style={{ fontSize: '48px', fill: '#ffeb3b', opacity: 0.9 }}
                     >
                         【気づき {i + 1}】{insight}
                     </text>
