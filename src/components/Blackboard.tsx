@@ -48,10 +48,10 @@ export const Blackboard: React.FC = () => {
         }
 
         const lastY = currentNodes[lastIndex].y;
-        // 画面中央（やや上）に最新ノードが来るように
-        const centerY = lastY - 150;
+        // 画面中央付近に最新ノードが来くるように調整 (800 / 2 = 400 だが、少し上寄りのほうが自然)
+        const viewY = lastY - 350;
 
-        return `-600 ${centerY} 1200 600`;
+        return `-600 ${viewY} 1200 800`;
     }, [phase, currentNodes]);
 
     return (
